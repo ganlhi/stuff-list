@@ -1,0 +1,23 @@
+{
+  "name": "stuff-list",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "start": "parcel public/index.html",
+    "build": "rm -rf dist && parcel build public/index.html --public-url /stuff-list",
+    "deploy": "npm run build && gh-pages -d dist",
+    "test": "elm-test"
+  },
+  "keywords": [],
+  "author": "Guilhem Brouat <ganlhi@gmail.com>",
+  "license": "ISC",
+  "devDependencies": {
+    "elm-format": "^0.8.2",
+    "elm-hot": "^1.1.2",
+    "elm-test": "^0.19.1",
+    "gh-pages": "^2.1.1",
+    "node-elm-compiler": "^5.0.4",
+    "parcel-bundler": "^1.12.4"
+  }
+}

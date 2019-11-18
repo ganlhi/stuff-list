@@ -1,6 +1,11 @@
 module Stuff exposing (..)
 
 
+type ListScope
+    = All
+    | Favorites
+
+
 type alias Stuff =
     { text : String
     , favorite : Bool
@@ -35,15 +40,10 @@ setFavorite stuff checked =
     List.map setOne
 
 
-add : Maybe String -> List Stuff -> List Stuff
+add : String -> List Stuff -> List Stuff
 add name list =
-    case name of
-        Nothing ->
-            list
+    if String.length name > 0 then
+        list ++ [ { text = name, favorite = False } ]
 
-        Just text ->
-            if String.length text > 0 then
-                list ++ [ { text = text, favorite = False } ]
-
-            else
-                list
+    else
+        list

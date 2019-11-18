@@ -5,36 +5,30 @@ import Browser.Navigation as Nav exposing (Key)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Input as Input
-import Stuff exposing (Stuff, add, delete, favorites, numberOfFavorites, setFavorite)
+import Page.Create
+import Page.List exposing (Msg(..))
+import Stuff exposing (ListScope(..), Stuff, add, delete, favorites, numberOfFavorites, setFavorite)
 import Url exposing (Url)
 
 
 type Msg
     = NoOp
-    | ClickedDelete Stuff
-    | CheckedFavorite Stuff Bool
     | ClickedLink UrlRequest
     | ChangedUrl Url
-    | ChangedNewStuffName String
-    | ClickedAdd
+    | GotCreateMsg Page.Create.Msg
+    | GotListMsg Page.List.Msg
 
 
 type alias Model =
     { key : Key
     , list : List Stuff
     , page : Page
-    , newStuffName : Maybe String
     }
-
-
-type ListScope
-    = All
-    | Favorites
 
 
 type Page
     = ListPage ListScope
-    | CreatePage
+    | CreatePage String
 
 
 
@@ -55,7 +49,7 @@ main =
 
 init : () -> Url -> Key -> ( Model, Cmd Msg )
 init _ url key =
-    ( { key = key, list = [], page = urlToPage url, newStuffName = Nothing }
+    ( { key = key, list = [], page = urlToPage url }
     , Cmd.none
     )
 
@@ -70,11 +64,21 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
-        ClickedDelete stuff ->
-            ( { model | list = delete stuff model.list }, Cmd.none )
+        GotCreateMsg createMsg ->
+            case model.page of
+                CreatePage newName ->
+                    toCreate model createMsg (Page.Create.update createMsg newName)
 
-        CheckedFavorite stuff checked ->
-            ( { model | list = setFavorite stuff checked model.list }, Cmd.none )
+                _ ->
+                    ( model, Cmd.none )
+
+        GotListMsg listMsg ->
+            case model.page of
+                ListPage scope ->
+                    toList model listMsg (Page.List.update listMsg scope)
+
+                _ ->
+                    ( model, Cmd.none )
 
         ClickedLink urlRequest ->
             onClickedLink urlRequest model
@@ -82,19 +86,29 @@ update msg model =
         ChangedUrl url ->
             onUrlChanged url model
 
-        ChangedNewStuffName text ->
+
+toCreate : Model -> Page.Create.Msg -> ( Page.Create.Model, Cmd Page.Create.Msg ) -> ( Model, Cmd Msg )
+toCreate model msg ( name, cmd ) =
+    case msg of
+        Page.Create.ChangedNewName _ ->
+            ( { model | page = CreatePage name }, Cmd.map GotCreateMsg cmd )
+
+        Page.Create.ClickedAdd ->
             let
-                name =
-                    if String.length text > 0 then
-                        Just text
-
-                    else
-                        Nothing
+                newList =
+                    add name model.list
             in
-            ( { model | newStuffName = name }, Cmd.none )
+            ( { model | list = newList, page = ListPage All }, Cmd.none )
 
-        ClickedAdd ->
-            ( { model | newStuffName = Nothing, list = add model.newStuffName model.list }, Cmd.none )
+
+toList : Model -> Page.List.Msg -> ( Page.List.Model, Cmd Page.List.Msg ) -> ( Model, Cmd Msg )
+toList model msg _ =
+    case msg of
+        ClickedDelete stuff ->
+            ( { model | list = delete stuff model.list }, Cmd.none )
+
+        CheckedFavorite stuff checked ->
+            ( { model | list = setFavorite stuff checked model.list }, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
@@ -135,7 +149,7 @@ urlToPage url =
             ListPage Favorites
 
         "/new" ->
-            CreatePage
+            CreatePage ""
 
         "" ->
             ListPage All
@@ -155,10 +169,10 @@ view model =
         content =
             case model.page of
                 ListPage listScope ->
-                    listView model.list listScope
+                    Page.List.view model.list listScope |> Element.map GotListMsg
 
-                CreatePage ->
-                    createView model.newStuffName
+                CreatePage newStuffName ->
+                    Page.Create.view newStuffName |> Element.map GotCreateMsg
     in
     { title = "Stuff List"
     , body =
@@ -203,74 +217,4 @@ menu model =
             { url = "/new"
             , label = text <| "Add stuff"
             }
-        ]
-
-
-listView : List Stuff -> ListScope -> Element Msg
-listView stuffs scope =
-    let
-        list =
-            case scope of
-                All ->
-                    stuffs
-
-                Favorites ->
-                    stuffs |> favorites
-
-        content =
-            if List.length list == 0 then
-                [ paragraph []
-                    [ text "No stuff here! You should "
-                    , link [] { url = "/new", label = text "add one" }
-                    , text "..."
-                    ]
-                ]
-
-            else
-                List.map listItem list
-    in
-    column
-        [ width fill
-        , alignTop
-        , padding 10
-        ]
-        content
-
-
-listItem : Stuff -> Element Msg
-listItem stuff =
-    row [ spacing 10 ]
-        [ text stuff.text
-        , Input.checkbox []
-            { icon = Input.defaultCheckbox
-            , checked = stuff.favorite
-            , label = Input.labelHidden "Favorite"
-            , onChange = CheckedFavorite stuff
-            }
-        , Input.button []
-            { label = text "X"
-            , onPress = Just (ClickedDelete stuff)
-            }
-        ]
-
-
-createView : Maybe String -> Element Msg
-createView newStuffName =
-    column
-        [ width fill
-        , alignTop
-        , padding 10
-        ]
-        [ row [ spacing 10 ]
-            [ Input.text []
-                { onChange = ChangedNewStuffName
-                , text = Maybe.withDefault "" newStuffName
-                , label = Input.labelHidden "Name"
-                , placeholder = Nothing
-                }
-            , Input.button []
-                { label = text "Add"
-                , onPress = Just ClickedAdd
-                }
-            ]
         ]

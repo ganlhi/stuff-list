@@ -10,3 +10,4 @@ The sidebar shows a menu to access the different views, and the entry for the li
 
 * [Angular](https://github.com/ganlhi/stuff-list/tree/angular)
 * [Elm](https://github.com/ganlhi/stuff-list/tree/elm)
+* [React](https://github.com/ganlhi/stuff-list/tree/react)
